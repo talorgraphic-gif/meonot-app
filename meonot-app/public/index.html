@@ -214,6 +214,8 @@
     </div>
     <div class="topbar-actions">
       <span id="saveStatus" style="font-size:12px;color:var(--ok);opacity:0;transition:opacity .3s ease;">✓ נשמר</span>
+      <button class="btn btn-ghost btn-sm" onclick="App.openManageHolidaysModal()">📅 אירועי השנה</button>
+      <button class="btn btn-ghost btn-sm" onclick="App.openDataToolsModal()">⚙ גיבוי ונתונים</button>
       <button class="btn btn-ghost btn-sm" onclick="App.goSearch()">🔍 חיפוש מתקדם</button>
       <button class="btn btn-primary btn-sm" onclick="App.openAddPrimaryModal()">+ מנהלת ראשית</button>
     </div>
@@ -224,12 +226,13 @@
   <div id="app"></div>
 </div>
 <div id="modalRoot"></div>
+<input type="file" id="restoreFileInput" accept="application/json,.json" style="display:none" onchange="App.handleRestoreFile(event)">
 
 <script>
 /* =========================================================================
    DATA DEFINITIONS
    ========================================================================= */
-const HOLIDAYS = [
+const DEFAULT_HOLIDAYS = [
   {key:'rosh',       name:'ראש השנה',    icon:'🍯'},
   {key:'hanuka',      name:'חנוכה',       icon:'🕎'},
   {key:'tuBshvat',    name:'ט"ו בשבט',    icon:'🌳'},
@@ -239,7 +242,14 @@ const HOLIDAYS = [
   {key:'shavuot',     name:'שבועות',      icon:'🌾'},
   {key:'endOfYear',   name:'סוף שנה',     icon:'🎓'}
 ];
-const HOLIDAY_MAP = Object.fromEntries(HOLIDAYS.map(h=>[h.key,h]));
+// getHolidays()/getHolidayMap() read the live, editable list from DB.holidays.
+// DEFAULT_HOLIDAYS is only used to seed a brand-new / reset database.
+function getHolidays(){ return (typeof DB!=='undefined' && DB && Array.isArray(DB.holidays)) ? DB.holidays : DEFAULT_HOLIDAYS; }
+function getHolidayMap(){
+  const map = {};
+  getHolidays().forEach(h=>{ map[h.key]=h; });
+  return map;
+}
 
 const STATUSES = ['טרם נבחר','נבחר','ממתין לאישור','אושר','בהכנה','מוכן','סופק','שולם'];
 const LOCKED_STATUSES = ['אושר','בהכנה','מוכן','סופק','שולם'];
@@ -305,7 +315,7 @@ function seedGenerate(){
 
       managers.push({id, primaryId:p.id, name, kgName, city, children, budgetPerChild, notes:''});
 
-      HOLIDAYS.forEach((h, hIdx)=>{
+      DEFAULT_HOLIDAYS.forEach((h, hIdx)=>{
         const orderId = id+'_'+h.key;
         const pool = PRODUCTS[h.key];
         const plannedProduct = pool[(mgrIndex+hIdx) % pool.length];
@@ -341,7 +351,7 @@ function seedGenerate(){
     {id:'a4', text:'יעל / מעון שמש – סטטוס ראש השנה עודכן ל"מוכן"', time:daysAgo(5)}
   ];
 
-  return {primaries, managers, orders, activity};
+  return {primaries, managers, orders, activity, holidays: JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS))};
 }
 
 /* =========================================================================
@@ -355,7 +365,14 @@ async function loadDB(){
     const res = await fetch('/api/data');
     if(res.ok){
       const data = await res.json();
-      if(data && data.primaries){ DB = data; return; }
+      if(data && data.primaries){
+        DB = data;
+        if(!Array.isArray(DB.holidays)){
+          DB.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
+          saveDB();
+        }
+        return;
+      }
     }
   }catch(e){ console.warn('לא הצלחתי להתחבר לשרת, משתמש בנתוני התחלה', e); }
   DB = seedGenerate();
@@ -586,8 +603,8 @@ const App = {
     if(!name || !kgName || !city) return false;
     const id = uid('m');
     DB.managers.push({id, primaryId, name, kgName, city, children, budgetPerChild, notes});
-    HOLIDAYS.forEach(h=>{
-      const pool = PRODUCTS[h.key];
+    getHolidays().forEach(h=>{
+      const pool = PRODUCTS[h.key] || [''];
       DB.orders.push({
         id: id+'_'+h.key, managerId:id, holidayKey:h.key, custom:false,
         plannedProduct: pool[0], actualProduct:null,
@@ -674,7 +691,7 @@ const App = {
   openEditOrderModal(orderId){
     const o = getOrder(orderId);
     const m = getManager(o.managerId);
-    const h = HOLIDAY_MAP[o.holidayKey];
+    const h = getHolidayMap()[o.holidayKey];
     const label = o.custom ? (o.customName||'אירוע מותאם') : (h.icon + ' ' + h.name);
     openModal(`
       <h3>${label}</h3>
@@ -723,7 +740,7 @@ const App = {
       o.childrenSnapshot = m.children; // lock-in current children count
     }
     o.notes = document.getElementById('f-o-notes').value.trim();
-    logActivity(m.name + ' / ' + m.kgName + ' – סטטוס "' + (o.custom? (o.customName||'אירוע') : HOLIDAY_MAP[o.holidayKey].name) + '" עודכן ל"' + newStatus + '"');
+    logActivity(m.name + ' / ' + m.kgName + ' – סטטוס "' + (o.custom? (o.customName||'אירוע') : getHolidayMap()[o.holidayKey].name) + '" עודכן ל"' + newStatus + '"');
     saveDB(); closeModal(); render();
     return false;
   },
@@ -775,6 +792,200 @@ const App = {
   clearSearch(){
     this.state.search = {q:'',primary:'',city:'',holiday:'',status:'',budget:''};
     render();
+  },
+
+  /* ---------- manage yearly events / holidays ---------- */
+  openManageHolidaysModal(){
+    const list = getHolidays().map(h=>{
+      const count = DB.orders.filter(o=>o.holidayKey===h.key).length;
+      return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);">
+        <span style="font-size:19px;width:26px;text-align:center;">${h.icon}</span>
+        <input type="text" value="${esc(h.name)}" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:13.5px;background:var(--bg);" onchange="App.renameHoliday('${h.key}', this.value)">
+        <span style="font-size:11.5px;color:var(--ink-soft);white-space:nowrap;">${count} מנהלות</span>
+        <span class="btn-icon" title="ניהול שיוך למנהלות" onclick="App.openHolidayAssignmentModal('${h.key}')">🔗</span>
+      </div>
+    `;
+    }).join('');
+    openModal(`
+      <h3>אירועי השנה</h3>
+      <p class="modal-sub">שינוי שם כאן מתעדכן אצל כולן (זה רק תווית). הוספה או הסרה של האירוע עצמו נעשית רק אצל המנהלות שתבחרי - לא אוטומטית אצל כולן.</p>
+      <div style="max-height:320px;overflow-y:auto;margin-bottom:16px;">${list || '<p style="color:var(--ink-soft);font-size:13px;">אין עדיין אירועים.</p>'}</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">סגירה</button>
+        <button type="button" class="btn btn-primary" onclick="App.openAddHolidayModal()">+ אירוע חדש</button>
+      </div>
+    `);
+  },
+  openAddHolidayModal(){
+    openModal(`
+      <h3>הוספת אירוע חדש</h3>
+      <p class="modal-sub">בשלב הבא תוכלי לבחור בדיוק לאילו מנהלות לשייך אותו - לא חייבים לכולן.</p>
+      <form onsubmit="return App.submitAddHoliday(event)">
+        <div class="form-row2">
+          <div class="form-group"><label>אימוג׳י (לא חובה)</label><input type="text" id="f-h-icon" maxlength="4" placeholder="🎉"></div>
+          <div class="form-group"><label>שם האירוע</label><input type="text" id="f-h-name" required placeholder="למשל: יום המשפחה"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="App.openManageHolidaysModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">המשך לבחירת מנהלות</button>
+        </div>
+      </form>
+    `);
+  },
+  submitAddHoliday(e){
+    e.preventDefault();
+    const name = document.getElementById('f-h-name').value.trim();
+    const icon = document.getElementById('f-h-icon').value.trim() || '🎉';
+    if(!name) return false;
+    const key = uid('hol');
+    if(!Array.isArray(DB.holidays)) DB.holidays = [];
+    DB.holidays.push({key, name, icon});
+    logActivity('נוסף אירוע חדש לקטלוג: ' + name + ' (עדיין לא משויך לאף מנהלת)');
+    saveDB();
+    this.openHolidayAssignmentModal(key);
+    return false;
+  },
+  renameHoliday(key, newName){
+    const h = getHolidays().find(x=>x.key===key);
+    newName = (newName||'').trim();
+    if(!h || !newName || newName===h.name) return;
+    const old = h.name;
+    h.name = newName;
+    logActivity('שם האירוע "' + old + '" שונה ל"' + newName + '"');
+    saveDB(); render();
+  },
+  openHolidayAssignmentModal(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const assignedIds = new Set(DB.orders.filter(o=>o.holidayKey===key).map(o=>o.managerId));
+    const rows = DB.managers.map(m=>{
+      const p = getPrimary(m.primaryId);
+      const checked = assignedIds.has(m.id);
+      return `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer;">
+        <input type="checkbox" data-manager-id="${m.id}" ${checked?'checked':''} style="width:16px;height:16px;flex-shrink:0;">
+        <span style="flex:1;">${esc(m.name)} · ${esc(m.kgName)}</span>
+        <span style="color:var(--ink-soft);font-size:12px;">${esc(p?p.name:'')}</span>
+      </label>`;
+    }).join('');
+    openModal(`
+      <h3>${h.icon} שיוך "${esc(h.name)}" למנהלות</h3>
+      <p class="modal-sub">סמני רק את המנהלות שצריכות את האירוע הזה בתוכנית שלהן. הסרת סימון תמחק את הרשומה של אותה מנהלת לאירוע זה בלבד.</p>
+      <div style="max-height:300px;overflow-y:auto;margin-bottom:16px;" id="assignList">
+        ${rows || '<p style="color:var(--ink-soft);font-size:13px;">אין עדיין מנהלות במערכת.</p>'}
+      </div>
+      <div class="modal-actions" style="justify-content:space-between;">
+        <span class="btn btn-danger btn-sm" onclick="App.deleteHoliday('${key}')">🗑 מחיקת האירוע לגמרי מהקטלוג</span>
+        <div style="display:flex;gap:10px;">
+          <button type="button" class="btn btn-ghost" onclick="App.openManageHolidaysModal()">חזרה</button>
+          <button type="button" class="btn btn-primary" onclick="App.submitHolidayAssignment('${key}')">שמירה</button>
+        </div>
+      </div>
+    `);
+  },
+  submitHolidayAssignment(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const checkboxes = document.querySelectorAll('#assignList input[type=checkbox]');
+    const checkedIds = new Set();
+    checkboxes.forEach(cb=>{ if(cb.checked) checkedIds.add(cb.getAttribute('data-manager-id')); });
+    const currentIds = new Set(DB.orders.filter(o=>o.holidayKey===key).map(o=>o.managerId));
+
+    DB.orders = DB.orders.filter(o=>{
+      if(o.holidayKey!==key) return true;
+      return checkedIds.has(o.managerId);
+    });
+    checkedIds.forEach(mid=>{
+      if(!currentIds.has(mid)){
+        DB.orders.push({
+          id: mid+'_'+key, managerId:mid, holidayKey:key, custom:false,
+          plannedProduct:'', actualProduct:null, plannedPrice:30, actualPrice:null,
+          status:'טרם נבחר', notes:'', childrenSnapshot:null, locked:false
+        });
+      }
+    });
+    logActivity('שיוך האירוע "' + h.name + '" עודכן - כעת אצל ' + checkedIds.size + ' מנהלות');
+    saveDB();
+    closeModal();
+    render();
+  },
+  deleteHoliday(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const count = DB.orders.filter(o=>o.holidayKey===key).length;
+    if(!confirm('למחוק את "' + h.name + '" לגמרי מהקטלוג? פעולה זו תמחק גם ' + count + ' רשומות הזמנה משויכות (אצל המנהלות שכן כוללות אותו), ואינה הפיכה. להמשיך?')) return;
+    DB.holidays = DB.holidays.filter(x=>x.key!==key);
+    DB.orders = DB.orders.filter(o=>o.holidayKey!==key);
+    logActivity('האירוע "' + h.name + '" נמחק לגמרי מהקטלוג');
+    saveDB(); this.openManageHolidaysModal();
+  },
+
+  /* ---------- backup / restore / reset ---------- */
+  openDataToolsModal(){
+    openModal(`
+      <h3>גיבוי ונתונים</h3>
+      <p class="modal-sub">ניהול הנתונים השמורים במערכת.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:6px;">
+        <button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;" onclick="App.exportBackup()">📥 הורדת גיבוי (קובץ לשמירה במחשב)</button>
+        <button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;" onclick="App.triggerRestore()">📤 שחזור מקובץ גיבוי</button>
+        <button type="button" class="btn btn-danger" style="width:100%;justify-content:flex-start;" onclick="App.resetAllData()">🗑 מחיקת כל הנתונים (התחלה מריק)</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">סגירה</button>
+      </div>
+    `);
+  },
+  exportBackup(){
+    const dataStr = JSON.stringify(DB, null, 2);
+    const blob = new Blob([dataStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'גיבוי-תוכנית-מתנות-' + today + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  triggerRestore(){
+    document.getElementById('restoreFileInput').click();
+  },
+  handleRestoreFile(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      let parsed;
+      try{ parsed = JSON.parse(ev.target.result); }
+      catch(err){ alert('לא הצלחתי לקרוא את הקובץ. ודאי שזה קובץ גיבוי תקין שהורד מהמערכת הזו.'); return; }
+      if(!parsed || !Array.isArray(parsed.primaries) || !Array.isArray(parsed.managers) || !Array.isArray(parsed.orders)){
+        alert('הקובץ לא נראה כמו קובץ גיבוי של המערכת.');
+        return;
+      }
+      if(!confirm('פעולה זו תחליף את כל הנתונים הקיימים במערכת בנתונים מתוך הקובץ שבחרת. להמשיך?')) return;
+      DB = parsed;
+      if(!Array.isArray(DB.activity)) DB.activity = [];
+      if(!Array.isArray(DB.holidays)) DB.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
+      logActivity('הנתונים שוחזרו מקובץ גיבוי');
+      saveDB();
+      closeModal();
+      App.goDashboard();
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  },
+  resetAllData(){
+    if(!confirm('פעולה זו תמחק את כל הנתונים הקיימים במערכת (כולל נתוני הדוגמה) ותתחיל מריק. מומלץ להוריד גיבוי קודם. להמשיך?')) return;
+    if(!confirm('לאישור סופי: הפעולה אינה הפיכה, אלא אם תשחזרי מגיבוי. למחוק הכול?')) return;
+    DB = {
+      primaries: [], managers: [], orders: [],
+      holidays: JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS)),
+      activity: [{id:uid('a'), text:'המערכת אופסה וכל הנתונים נמחקו', time:new Date().toISOString()}]
+    };
+    saveDB();
+    closeModal();
+    App.goDashboard();
   }
 };
 
@@ -966,7 +1177,7 @@ function renderManager(managerId){
   const percent = managerPercent(m);
   const bs = budgetStatusMeta(percent);
   const orders = getOrdersOf(managerId);
-  const standardOrders = HOLIDAYS.map(h=> orders.find(o=>o.holidayKey===h.key) ).filter(Boolean);
+  const standardOrders = getHolidays().map(h=> orders.find(o=>o.holidayKey===h.key) ).filter(Boolean);
   const customOrders = orders.filter(o=>o.custom);
 
   let html = `
@@ -1027,7 +1238,7 @@ function renderManager(managerId){
 }
 
 function renderOrderRow(o, m){
-  const h = o.custom ? null : HOLIDAY_MAP[o.holidayKey];
+  const h = o.custom ? null : getHolidayMap()[o.holidayKey];
   const label = o.custom ? (o.customName||'אירוע') : (h.icon + ' ' + h.name);
   const children = orderChildren(o, m);
   const totalPlanned = orderTotalPlanned(o, m);
@@ -1052,7 +1263,7 @@ function renderOrderRow(o, m){
    RENDER: UPCOMING HOLIDAY SCREEN
    ========================================================================= */
 function renderHoliday(holidayKey){
-  const h = HOLIDAY_MAP[holidayKey] || HOLIDAYS[0];
+  const h = getHolidayMap()[holidayKey] || getHolidays()[0];
   const rows = DB.orders.filter(o=>o.holidayKey===h.key).map(o=>({o, m:getManager(o.managerId)})).filter(x=>x.m);
 
   // production summary: group by actual||planned product
@@ -1071,7 +1282,7 @@ function renderHoliday(holidayKey){
     </div>
 
     <div class="tabs">
-      ${HOLIDAYS.map(x=>`<div class="tab ${x.key===h.key?'active':''}" onclick="App.goHoliday('${x.key}')">${x.icon} ${x.name}</div>`).join('')}
+      ${getHolidays().map(x=>`<div class="tab ${x.key===h.key?'active':''}" onclick="App.goHoliday('${x.key}')">${x.icon} ${x.name}</div>`).join('')}
     </div>
 
     <div class="section-title"><h3>🏭 סיכום ייצור נדרש</h3></div>
@@ -1160,7 +1371,7 @@ function renderSearch(){
       </select>
       <select onchange="App.updateSearch('holiday', this.value)">
         <option value="">כל החגים</option>
-        ${HOLIDAYS.map(h=>`<option value="${h.key}" ${s.holiday===h.key?'selected':''}>${h.icon} ${h.name}</option>`).join('')}
+        ${getHolidays().map(h=>`<option value="${h.key}" ${s.holiday===h.key?'selected':''}>${h.icon} ${h.name}</option>`).join('')}
       </select>
       <select onchange="App.updateSearch('status', this.value)">
         <option value="">כל הסטטוסים</option>
@@ -1183,7 +1394,7 @@ function renderSearch(){
       <tbody>
         ${filtered.map(({o,m})=>{
           const p = getPrimary(m.primaryId);
-          const h = o.custom ? {icon:'✨', name:o.customName||'אירוע'} : HOLIDAY_MAP[o.holidayKey];
+          const h = o.custom ? {icon:'✨', name:o.customName||'אירוע'} : getHolidayMap()[o.holidayKey];
           const meta = STATUS_META[o.status];
           const totalActual = orderTotalActual(o,m);
           const totalPlanned = orderTotalPlanned(o,m);
