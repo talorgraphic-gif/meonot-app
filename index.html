@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לוח בקרה – תוכנית מתנות למעונות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF8F4;
+    --surface:#FFFFFF;
+    --cream:#F6EEE1;
+    --cream-deep:#EFE2CC;
+    --pink:#F5DEE1;
+    --pink-deep:#E3AEB6;
+    --pink-text:#9C5C64;
+    --ink:#2B2825;
+    --ink-soft:#847E76;
+    --ink-faint:#B4ADA2;
+    --line:#EEE6D8;
+    --ok:#6F8F63;
+    --ok-bg:#E7EEE1;
+    --warn:#B87F35;
+    --warn-bg:#F5E8D2;
+    --danger:#AC5B52;
+    --danger-bg:#F3DFDA;
+    --danger-deep:#8B3E36;
+    --danger-deep-bg:#EFD0CB;
+    --radius:20px;
+    --radius-sm:12px;
+    --shadow: 0 6px 24px rgba(60,50,40,0.07);
+    --shadow-sm: 0 2px 10px rgba(60,50,40,0.05);
+    --font-display:'Frank Ruhl Libre', serif;
+    --font-body:'Heebo', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);}
+  body{min-height:100vh;padding-bottom:60px;}
+  h1,h2,h3,h4{font-family:var(--font-display);margin:0;font-weight:700;}
+  p{margin:0;}
+  button{font-family:var(--font-body);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-body);}
+  a{color:inherit;}
+  ::selection{background:var(--pink-deep);color:#fff;}
+
+  /* ---------- layout ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px;}
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(251,248,244,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+  .topbar-inner{display:flex;align-items:center;justify-content:space-between;padding:16px 0;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .brand-mark{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--pink) 0%, var(--cream) 100%);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--shadow-sm);}
+  .brand-text h1{font-size:20px;letter-spacing:0.2px;}
+  .brand-text span{font-size:12px;color:var(--ink-soft);}
+  .topbar-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+  .breadcrumb{display:flex;align-items:center;gap:8px;padding:14px 0 0;font-size:14px;color:var(--ink-soft);flex-wrap:wrap;}
+  .breadcrumb span.sep{color:var(--ink-faint);}
+  .breadcrumb a{cursor:pointer;color:var(--ink-soft);}
+  .breadcrumb a:hover{color:var(--pink-text);}
+  .breadcrumb .current{color:var(--ink);font-weight:600;}
+
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:18px 0 22px;flex-wrap:wrap;}
+  .page-head h2{font-size:28px;}
+  .page-head .sub{color:var(--ink-soft);font-size:14px;margin-top:4px;}
+
+  /* ---------- buttons ---------- */
+  .btn{border:none;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;white-space:nowrap;}
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--ink);color:#fff;}
+  .btn-primary:hover{box-shadow:var(--shadow);}
+  .btn-accent{background:var(--pink-deep);color:#fff;}
+  .btn-accent:hover{box-shadow:var(--shadow);}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--pink-deep);}
+  .btn-danger{background:var(--danger-deep-bg);color:var(--danger-deep);}
+  .btn-danger:hover{background:var(--danger-deep);color:#fff;}
+  .btn-sm{padding:6px 14px;font-size:12.5px;}
+  .btn-icon{width:32px;height:32px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--line);}
+  .btn-icon:hover{border-color:var(--pink-deep);}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--line);}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+  .stat-card{background:var(--surface);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--line);box-shadow:var(--shadow-sm);}
+  .stat-card .label{font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .stat-card .value{font-family:var(--font-display);font-size:26px;font-weight:700;}
+  .stat-card.accent{background:linear-gradient(135deg, var(--pink) 0%, var(--cream) 120%);}
+
+  .primary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px;}
+  .primary-card{background:var(--surface);border-radius:var(--radius);padding:22px;border:1px solid var(--line);box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .18s ease, box-shadow .18s ease;position:relative;overflow:hidden;}
+  .primary-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
+  .primary-card::before{content:"";position:absolute;top:-40px;left:-40px;width:110px;height:110px;border-radius:50%;background:var(--pink);opacity:.5;}
+  .primary-card .pc-head{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;}
+  .primary-card h3{font-size:21px;}
+  .primary-card .pc-tag{font-size:11.5px;color:var(--ink-soft);background:var(--cream);border-radius:999px;padding:3px 10px;}
+  .primary-card .pc-stats{display:flex;gap:18px;margin:14px 0 10px;position:relative;z-index:1;}
+  .primary-card .pc-stats div span{display:block;}
+  .primary-card .pc-stats .n{font-family:var(--font-display);font-size:19px;font-weight:700;}
+  .primary-card .pc-stats .l{font-size:11px;color:var(--ink-soft);}
+  .primary-card .pc-money{font-size:13px;color:var(--ink-soft);margin-bottom:8px;position:relative;z-index:1;}
+  .primary-card .pc-money b{color:var(--ink);}
+
+  .progress-track{height:9px;border-radius:999px;background:var(--cream);overflow:hidden;position:relative;}
+  .progress-fill{height:100%;border-radius:999px;transition:width .4s ease;}
+  .progress-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+  /* ---------- badges ---------- */
+  .badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;white-space:nowrap;}
+  .badge-ok{background:var(--ok-bg);color:var(--ok);}
+  .badge-warn{background:var(--warn-bg);color:var(--warn);}
+  .badge-danger{background:var(--danger-bg);color:var(--danger);}
+  .badge-danger-deep{background:var(--danger-deep-bg);color:var(--danger-deep);}
+  .badge-neutral{background:var(--cream);color:var(--ink-soft);}
+  .badge-pink{background:var(--pink);color:var(--pink-text);}
+
+  /* ---------- tables / lists ---------- */
+  .manager-list{display:flex;flex-direction:column;gap:10px;margin-bottom:30px;}
+  .manager-row{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px 18px;display:grid;grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr;gap:14px;align-items:center;cursor:pointer;transition:box-shadow .15s ease, border-color .15s ease;}
+  .manager-row:hover{box-shadow:var(--shadow-sm);border-color:var(--pink-deep);}
+  .manager-row .mr-name{font-weight:700;font-size:15px;}
+  .manager-row .mr-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .manager-row .mr-col-label{font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+  .manager-row .mr-col-value{font-size:14px;font-weight:600;}
+
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin:34px 0 14px;}
+  .section-title h3{font-size:19px;}
+
+  .holiday-table{width:100%;border-collapse:separate;border-spacing:0 10px;}
+  .holiday-table thead th{text-align:right;font-size:11.5px;color:var(--ink-soft);font-weight:600;padding:0 14px 6px;text-transform:uppercase;letter-spacing:.02em;}
+  .holiday-table tbody tr{background:var(--surface);border:1px solid var(--line);}
+  .holiday-table tbody td{padding:14px;font-size:13.5px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .holiday-table tbody td:first-child{border-right:1px solid var(--line);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
+  .holiday-table tbody td:last-child{border-left:1px solid var(--line);border-radius:var(--radius-sm) 0 0 var(--radius-sm);}
+  .ht-holiday{font-weight:700;display:flex;align-items:center;gap:8px;}
+  .ht-product{color:var(--ink-soft);font-size:12.5px;}
+  .ht-product b{color:var(--ink);font-weight:600;display:block;font-size:13.5px;}
+  .ht-planned-note{font-size:11px;color:var(--ink-faint);margin-top:3px;}
+
+  .activity-list{display:flex;flex-direction:column;gap:10px;}
+  .activity-item{display:flex;align-items:flex-start;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;}
+  .activity-dot{width:8px;height:8px;border-radius:50%;background:var(--pink-deep);margin-top:5px;flex-shrink:0;}
+  .activity-time{color:var(--ink-faint);font-size:11.5px;white-space:nowrap;}
+
+  /* ---------- kindergarten detail ---------- */
+  .kg-head{background:linear-gradient(135deg, var(--cream) 0%, var(--pink) 130%);border-radius:var(--radius);padding:26px 28px;margin-bottom:26px;border:1px solid var(--line);}
+  .kg-head-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;}
+  .kg-head h2{font-size:26px;}
+  .kg-head .kg-meta{color:var(--ink-soft);font-size:13.5px;margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;}
+  .kg-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px;}
+  .kg-stat{background:rgba(255,255,255,0.6);border-radius:14px;padding:12px 16px;}
+  .kg-stat .l{font-size:11.5px;color:var(--ink-soft);}
+  .kg-stat .v{font-family:var(--font-display);font-size:20px;font-weight:700;margin-top:2px;}
+
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center;}
+  .filter-bar input, .filter-bar select{border:1px solid var(--line);border-radius:999px;padding:9px 16px;font-size:13px;background:var(--surface);color:var(--ink);outline:none;}
+  .filter-bar input:focus, .filter-bar select:focus{border-color:var(--pink-deep);}
+  .filter-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .filter-grid input, .filter-grid select{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;background:var(--surface);outline:none;}
+  .filter-grid input:focus, .filter-grid select:focus{border-color:var(--pink-deep);}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+  .empty-state .em-icon{font-size:38px;margin-bottom:10px;}
+
+  /* ---------- modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(43,40,37,0.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(2px);}
+  .modal{background:var(--surface);border-radius:var(--radius);max-width:520px;width:100%;max-height:88vh;overflow-y:auto;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+  .modal h3{font-size:20px;margin-bottom:4px;}
+  .modal .modal-sub{color:var(--ink-soft);font-size:13px;margin-bottom:18px;}
+  .form-group{margin-bottom:14px;}
+  .form-group label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  .form-group input, .form-group select, .form-group textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:14px;outline:none;background:var(--bg);color:var(--ink);}
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus{border-color:var(--pink-deep);background:var(--surface);}
+  .form-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;}
+
+  /* ---------- production summary ---------- */
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:26px;}
+  .prod-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px;}
+  .prod-card .p-name{font-size:13px;color:var(--ink-soft);margin-bottom:6px;min-height:34px;}
+  .prod-card .p-count{font-family:var(--font-display);font-size:26px;font-weight:700;}
+  .prod-card .p-unit{font-size:11.5px;color:var(--ink-faint);}
+
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
+  .tab{padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;background:var(--surface);border:1px solid var(--line);cursor:pointer;color:var(--ink-soft);}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .kg-stats{grid-template-columns:repeat(2,1fr);}
+    .manager-row{grid-template-columns:1fr 1fr;row-gap:10px;}
+    .filter-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width:560px){
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .manager-row{grid-template-columns:1fr;}
+    .form-row2{grid-template-columns:1fr;}
+    .filter-grid{grid-template-columns:1fr;}
+    .kg-stats{grid-template-columns:1fr 1fr;}
+    .prod-grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand" onclick="App.goDashboard()">
+      <div class="brand-mark">🎁</div>
+      <div class="brand-text">
+        <h1>תוכנית מתנות למעונות</h1>
+        <span>ניהול שנתי · תקציב · הזמנות</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="saveStatus" style="font-size:12px;color:var(--ok);opacity:0;transition:opacity .3s ease;">✓ נשמר</span>
+      <button class="btn btn-ghost btn-sm" onclick="App.openManageHolidaysModal()">📅 אירועי השנה</button>
+      <button class="btn btn-ghost btn-sm" onclick="App.openDataToolsModal()">⚙ גיבוי ונתונים</button>
+      <button class="btn btn-ghost btn-sm" onclick="App.goSearch()">🔍 חיפוש מתקדם</button>
+      <button class="btn btn-primary btn-sm" onclick="App.openAddPrimaryModal()">+ מנהלת ראשית</button>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+  <div id="breadcrumb"></div>
+  <div id="app"></div>
+</div>
+<div id="modalRoot"></div>
+<input type="file" id="restoreFileInput" accept="application/json,.json" style="display:none" onchange="App.handleRestoreFile(event)">
+
+<script>
+/* =========================================================================
+   DATA DEFINITIONS
+   ========================================================================= */
+const DEFAULT_HOLIDAYS = [
+  {key:'rosh',       name:'ראש השנה',    icon:'🍯'},
+  {key:'hanuka',      name:'חנוכה',       icon:'🕎'},
+  {key:'tuBshvat',    name:'ט"ו בשבט',    icon:'🌳'},
+  {key:'purim',       name:'פורים',       icon:'🎭'},
+  {key:'pesach',      name:'פסח',         icon:'🌿'},
+  {key:'lagBaomer',   name:'ל"ג בעומר',   icon:'🏹'},
+  {key:'shavuot',     name:'שבועות',      icon:'🌾'},
+  {key:'endOfYear',   name:'סוף שנה',     icon:'🎓'}
+];
+// getHolidays()/getHolidayMap() read the live, editable list from DB.holidays.
+// DEFAULT_HOLIDAYS is only used to seed a brand-new / reset database.
+function getHolidays(){ return (typeof DB!=='undefined' && DB && Array.isArray(DB.holidays)) ? DB.holidays : DEFAULT_HOLIDAYS; }
+function getHolidayMap(){
+  const map = {};
+  getHolidays().forEach(h=>{ map[h.key]=h; });
+  return map;
+}
+
+const STATUSES = ['טרם נבחר','נבחר','ממתין לאישור','אושר','בהכנה','מוכן','סופק','שולם'];
+const LOCKED_STATUSES = ['אושר','בהכנה','מוכן','סופק','שולם'];
+
+const STATUS_META = {
+  'טרם נבחר':      {icon:'○', cls:'badge-neutral'},
+  'נבחר':          {icon:'✎', cls:'badge-pink'},
+  'ממתין לאישור':  {icon:'⏳', cls:'badge-warn'},
+  'אושר':          {icon:'✓', cls:'badge-ok'},
+  'בהכנה':         {icon:'⚙', cls:'badge-warn'},
+  'מוכן':          {icon:'📦', cls:'badge-ok'},
+  'סופק':          {icon:'🚚', cls:'badge-ok'},
+  'שולם':          {icon:'💳', cls:'badge-ok'}
+};
+
+const PRODUCTS = {
+  rosh:      ['מארז דבש ותפוח מעוצב','ערכת ברכה לשנה טובה','סט כלי דבש קרמיקה'],
+  hanuka:    ['סביבון עץ ושוקולד מעוצב','מנורת חנוכה מיני עם נרות','ערכת סופגניות וקישוט'],
+  tuBshvat:  ['שקית פירות יבשים מעוצבת','עציץ מיני עם שילוט אישי','ערכת נטיעה לילד'],
+  purim:     ['משלוח מנות אישי מעוצב','קופסת תחפושת מיני וממתקים','קופסת פור מעוצבת'],
+  pesach:    ['ערכת קידוש מיני','מפית פסח רקומה בשם הילד','סט כוסות קידוש לילדים'],
+  lagBaomer: ['קשת וחץ מעוצבים','פנס ל"ג בעומר אישי','ערכת מדורה מיניאטורית'],
+  shavuot:   ['סלסלת פירות מעוצבת','עטיפת ביכורים ופרי','זר פרחים מיני'],
+  endOfYear: ['תעודת סיום מעוצבת','מארז מתנת סיום שנה','אלבום זיכרונות מיני']
+};
+
+const CITIES = ['טירת כרמל','חיפה','כרמיאל','נשר','קריית ביאליק','זכרון יעקב','עכו','נהריה','יקנעם עילית','קריית טבעון','טבריה','עפולה'];
+const KG_NAMES = ['אור','פרחים','נרקיס','דבורה','שמש','כוכבים','ניצן','יסמין','רימון','אשכולית','לוטם','שקד','ורד','חבצלת','אירוס','פנינה','טללים','עדן','בוסתן','גפן'];
+const MANAGER_NAMES = ['ענבל','שירה','דנה','מיכל','נועה','אורית','טליה','חני','רותם','קרן','שני','אפרת','גלית','ליאת','אורלי','נטע','מירב','עדי','הדר','סיגל'];
+
+const STORAGE_KEY = 'meonot_gifts_db_v1'; // fallback only, not primary storage anymore
+
+/* =========================================================================
+   SEED DATA GENERATION
+   ========================================================================= */
+function daysAgo(n){
+  const d = new Date();
+  d.setDate(d.getDate()-n);
+  return d.toISOString();
+}
+
+function seedGenerate(){
+  const primaries = [
+    {id:'p1', name:'מורן', notes:'אחראית כוללת על אזור הצפון'},
+    {id:'p2', name:'ריקי', notes:''},
+    {id:'p3', name:'יעל', notes:'מעדיפה תיאום טלפוני לפני כל חג'}
+  ];
+  const counts = {p1:8, p2:6, p3:6};
+  const managers = [];
+  const orders = [];
+  let mgrIndex = 0, nameIdx = 0, kgIdx = 0, cityIdx = 0;
+
+  primaries.forEach(p=>{
+    const n = counts[p.id];
+    for(let i=0;i<n;i++){
+      mgrIndex++;
+      const id = 'm'+mgrIndex;
+      const name = MANAGER_NAMES[nameIdx % MANAGER_NAMES.length]; nameIdx++;
+      const kgName = 'מעון ' + KG_NAMES[kgIdx % KG_NAMES.length]; kgIdx++;
+      const city = CITIES[cityIdx % CITIES.length]; cityIdx++;
+      const children = 22 + ((mgrIndex*7) % 45);
+      const budgetPerChild = 160 + ((mgrIndex*13) % 90);
+
+      managers.push({id, primaryId:p.id, name, kgName, city, children, budgetPerChild, notes:''});
+
+      DEFAULT_HOLIDAYS.forEach((h, hIdx)=>{
+        const orderId = id+'_'+h.key;
+        const pool = PRODUCTS[h.key];
+        const plannedProduct = pool[(mgrIndex+hIdx) % pool.length];
+        const plannedPrice = 25 + ((mgrIndex + hIdx*3) % 40);
+        let status;
+        if(h.key==='rosh'){
+          const statusPool = ['אושר','בהכנה','מוכן','ממתין לאישור','נבחר','אושר','בהכנה','מוכן','סופק','טרם נבחר'];
+          status = statusPool[mgrIndex % statusPool.length];
+        } else if(h.key==='hanuka'){
+          const statusPool = ['טרם נבחר','טרם נבחר','נבחר','טרם נבחר','ממתין לאישור','טרם נבחר'];
+          status = statusPool[mgrIndex % statusPool.length];
+        } else {
+          status = 'טרם נבחר';
+        }
+        const locked = LOCKED_STATUSES.includes(status);
+        const childrenSnapshot = locked ? children : null;
+        const actualProduct = locked ? plannedProduct : null;
+        const actualPrice = locked ? (plannedPrice + (mgrIndex%2===0 ? 0 : -3)) : null;
+
+        orders.push({
+          id:orderId, managerId:id, holidayKey:h.key, custom:false,
+          plannedProduct, actualProduct, plannedPrice, actualPrice,
+          status, notes:'', childrenSnapshot, locked
+        });
+      });
+    }
+  });
+
+  const activity = [
+    {id:'a1', text:'מורן / מעון אור – ראש השנה אושר', time:daysAgo(1)},
+    {id:'a2', text:'ריקי / מעון פרחים – מספר הילדים עודכן מ-42 ל-45', time:daysAgo(2)},
+    {id:'a3', text:'מעון נרקיס – הזמנת חנוכה הועברה להכנה', time:daysAgo(4)},
+    {id:'a4', text:'יעל / מעון שמש – סטטוס ראש השנה עודכן ל"מוכן"', time:daysAgo(5)}
+  ];
+
+  return {primaries, managers, orders, activity, holidays: JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS))};
+}
+
+/* =========================================================================
+   PERSISTENCE
+   ========================================================================= */
+let DB = null;
+let saveTimer = null;
+
+async function loadDB(){
+  try{
+    const res = await fetch('/api/data');
+    if(res.ok){
+      const data = await res.json();
+      if(data && data.primaries){
+        DB = data;
+        if(!Array.isArray(DB.holidays)){
+          DB.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
+          saveDB();
+        }
+        return;
+      }
+    }
+  }catch(e){ console.warn('לא הצלחתי להתחבר לשרת, משתמש בנתוני התחלה', e); }
+  DB = seedGenerate();
+  saveDB();
+}
+
+function saveDB(){
+  // sync to localStorage too, as an offline safety net
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){}
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    fetch('/api/data', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(DB)
+    }).then(()=>flashSaveStatus(true)).catch(e=>{ console.warn('השמירה בשרת נכשלה', e); flashSaveStatus(false); });
+  }, 250);
+}
+
+function flashSaveStatus(ok){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  el.textContent = ok ? '✓ נשמר' : '⚠ לא נשמר בשרת';
+  el.style.opacity = '1';
+  el.style.color = ok ? 'var(--ok)' : 'var(--danger)';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.opacity='0'; }, 1800);
+}
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+function logActivity(text){
+  DB.activity.unshift({id:uid('a'), text, time:new Date().toISOString()});
+  DB.activity = DB.activity.slice(0,30);
+}
+
+/* =========================================================================
+   UTILITIES
+   ========================================================================= */
+function money(n){
+  n = Math.round(n||0);
+  return '₪' + n.toLocaleString('he-IL');
+}
+function pct(n){ return Math.round(n) + '%'; }
+function timeAgo(iso){
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs/60000);
+  if(mins < 1) return 'עכשיו';
+  if(mins < 60) return 'לפני ' + mins + ' דק׳';
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return 'לפני ' + hrs + ' שעות';
+  const days = Math.floor(hrs/24);
+  return 'לפני ' + days + ' ימים';
+}
+function esc(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- computations ---------- */
+function getManagersOf(primaryId){ return DB.managers.filter(m=>m.primaryId===primaryId); }
+function getOrdersOf(managerId){ return DB.orders.filter(o=>o.managerId===managerId); }
+function getManager(id){ return DB.managers.find(m=>m.id===id); }
+function getPrimary(id){ return DB.primaries.find(p=>p.id===id); }
+function getOrder(id){ return DB.orders.find(o=>o.id===id); }
+
+function orderChildren(order, manager){
+  if(order.locked && order.childrenSnapshot!=null) return order.childrenSnapshot;
+  return manager.children;
+}
+function orderTotalPlanned(order, manager){
+  return orderChildren(order, manager) * (order.plannedPrice||0);
+}
+function orderTotalActual(order, manager){
+  if(!order.locked) return null;
+  const price = order.actualPrice!=null ? order.actualPrice : order.plannedPrice;
+  return orderChildren(order, manager) * (price||0);
+}
+function managerBudgetTotal(m){ return m.children * m.budgetPerChild; }
+function managerSpent(m){
+  const orders = getOrdersOf(m.id);
+  return orders.reduce((sum,o)=>{
+    const t = orderTotalActual(o,m);
+    return sum + (t||0);
+  },0);
+}
+function managerRemaining(m){ return managerBudgetTotal(m) - managerSpent(m); }
+function managerPercent(m){
+  const b = managerBudgetTotal(m);
+  return b>0 ? (managerSpent(m)/b*100) : 0;
+}
+
+function budgetStatusMeta(percent){
+  if(percent > 100) return {label:'חריגה', icon:'🔴', cls:'badge-danger-deep'};
+  if(percent > 90)  return {label:'תקציב כמעט נגמר', icon:'⛔', cls:'badge-danger'};
+  if(percent > 70)  return {label:'תשומת לב', icon:'⚠️', cls:'badge-warn'};
+  return {label:'מצב תקין', icon:'✓', cls:'badge-ok'};
+}
+function progressColor(percent){
+  if(percent > 100) return 'var(--danger-deep)';
+  if(percent > 90)  return 'var(--danger)';
+  if(percent > 70)  return 'var(--warn)';
+  return 'var(--ok)';
+}
+
+function primaryAggregate(primaryId){
+  const mgrs = getManagersOf(primaryId);
+  const children = mgrs.reduce((s,m)=>s+m.children,0);
+  const budget = mgrs.reduce((s,m)=>s+managerBudgetTotal(m),0);
+  const spent = mgrs.reduce((s,m)=>s+managerSpent(m),0);
+  return {managerCount:mgrs.length, children, budget, spent, remaining:budget-spent, percent: budget>0?(spent/budget*100):0};
+}
+function overallAggregate(){
+  const children = DB.managers.reduce((s,m)=>s+m.children,0);
+  const budget = DB.managers.reduce((s,m)=>s+managerBudgetTotal(m),0);
+  const spent = DB.managers.reduce((s,m)=>s+managerSpent(m),0);
+  const activeOrders = DB.orders.filter(o=>o.status!=='טרם נבחר').length;
+  return {
+    primaryCount: DB.primaries.length,
+    managerCount: DB.managers.length,
+    kgCount: DB.managers.length,
+    children, budget, spent, remaining: budget-spent,
+    percent: budget>0?(spent/budget*100):0,
+    activeOrders
+  };
+}
+
+/* =========================================================================
+   APP STATE + ROUTING
+   ========================================================================= */
+const App = {
+  state:{ view:'dashboard', primaryId:null, managerId:null, holidayKey:'rosh', search:{q:'',primary:'',city:'',holiday:'',status:'',budget:''} },
+
+  goDashboard(){ this.state.view='dashboard'; render(); },
+  goPrimary(id){ this.state.view='primary'; this.state.primaryId=id; render(); },
+  goManager(id){ this.state.view='manager'; this.state.managerId=id; render(); },
+  goHoliday(key){ this.state.view='holiday'; this.state.holidayKey=key||this.state.holidayKey||'rosh'; render(); },
+  goSearch(){ this.state.view='search'; render(); },
+
+  /* ---------- modals: primary ---------- */
+  openAddPrimaryModal(){
+    openModal(`
+      <h3>הוספת מנהלת ראשית</h3>
+      <p class="modal-sub">מנהלת ראשית מרכזת מספר מנהלות מעונות תחתיה.</p>
+      <form onsubmit="return App.submitAddPrimary(event)">
+        <div class="form-group"><label>שם מנהלת ראשית</label><input type="text" id="f-primary-name" required placeholder="למשל: מורן"></div>
+        <div class="form-group"><label>הערות (לא חובה)</label><textarea id="f-primary-notes" rows="2" placeholder="הערה כללית..."></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">הוספה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitAddPrimary(e){
+    e.preventDefault();
+    const name = document.getElementById('f-primary-name').value.trim();
+    const notes = document.getElementById('f-primary-notes').value.trim();
+    if(!name) return false;
+    const id = uid('p');
+    DB.primaries.push({id, name, notes});
+    logActivity('נוספה מנהלת ראשית חדשה: ' + name);
+    saveDB(); closeModal(); this.goDashboard();
+    return false;
+  },
+  openEditPrimaryModal(id){
+    const p = getPrimary(id);
+    openModal(`
+      <h3>עריכת מנהלת ראשית</h3>
+      <form onsubmit="return App.submitEditPrimary(event,'${id}')">
+        <div class="form-group"><label>שם</label><input type="text" id="f-primary-name" required value="${esc(p.name)}"></div>
+        <div class="form-group"><label>הערות</label><textarea id="f-primary-notes" rows="2">${esc(p.notes)}</textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger" onclick="App.deletePrimary('${id}')">מחיקה</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">שמירה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitEditPrimary(e,id){
+    e.preventDefault();
+    const p = getPrimary(id);
+    p.name = document.getElementById('f-primary-name').value.trim() || p.name;
+    p.notes = document.getElementById('f-primary-notes').value.trim();
+    saveDB(); closeModal(); render();
+    return false;
+  },
+  deletePrimary(id){
+    const p = getPrimary(id);
+    if(!confirm('למחוק את "' + p.name + '" וכל המנהלות/ההזמנות תחתיה? פעולה זו אינה הפיכה.')) return;
+    const mgrIds = getManagersOf(id).map(m=>m.id);
+    DB.orders = DB.orders.filter(o=>!mgrIds.includes(o.managerId));
+    DB.managers = DB.managers.filter(m=>m.primaryId!==id);
+    DB.primaries = DB.primaries.filter(pr=>pr.id!==id);
+    logActivity('מנהלת ראשית "' + p.name + '" נמחקה');
+    saveDB(); closeModal(); this.goDashboard();
+  },
+
+  /* ---------- modals: manager ---------- */
+  openAddManagerModal(primaryId){
+    openModal(`
+      <h3>הוספת מנהלת מעון</h3>
+      <p class="modal-sub">תוכנית שנתית מלאה (8 חגים) תיווצר אוטומטית עבורה.</p>
+      <form onsubmit="return App.submitAddManager(event,'${primaryId}')">
+        <div class="form-row2">
+          <div class="form-group"><label>שם המנהלת</label><input type="text" id="f-m-name" required></div>
+          <div class="form-group"><label>שם המעון</label><input type="text" id="f-m-kg" required placeholder="מעון..."></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>עיר</label><input type="text" id="f-m-city" required></div>
+          <div class="form-group"><label>מספר ילדים</label><input type="number" id="f-m-children" min="0" required value="30"></div>
+        </div>
+        <div class="form-group"><label>תקציב שנתי לילד (₪)</label><input type="number" id="f-m-budget" min="0" required value="200"></div>
+        <div class="form-group"><label>הערות (לא חובה)</label><textarea id="f-m-notes" rows="2"></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">הוספה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitAddManager(e, primaryId){
+    e.preventDefault();
+    const name = document.getElementById('f-m-name').value.trim();
+    const kgName = document.getElementById('f-m-kg').value.trim();
+    const city = document.getElementById('f-m-city').value.trim();
+    const children = parseInt(document.getElementById('f-m-children').value)||0;
+    const budgetPerChild = parseInt(document.getElementById('f-m-budget').value)||0;
+    const notes = document.getElementById('f-m-notes').value.trim();
+    if(!name || !kgName || !city) return false;
+    const id = uid('m');
+    DB.managers.push({id, primaryId, name, kgName, city, children, budgetPerChild, notes});
+    getHolidays().forEach(h=>{
+      const pool = PRODUCTS[h.key] || [''];
+      DB.orders.push({
+        id: id+'_'+h.key, managerId:id, holidayKey:h.key, custom:false,
+        plannedProduct: pool[0], actualProduct:null,
+        plannedPrice: 30, actualPrice:null,
+        status:'טרם נבחר', notes:'', childrenSnapshot:null, locked:false
+      });
+    });
+    logActivity(name + ' / ' + kgName + ' – מנהלת חדשה נוספה');
+    saveDB(); closeModal(); this.goPrimary(primaryId);
+    return false;
+  },
+  openEditManagerModal(id){
+    const m = getManager(id);
+    openModal(`
+      <h3>עריכת פרטי מנהלת / מעון</h3>
+      <form onsubmit="return App.submitEditManager(event,'${id}')">
+        <div class="form-row2">
+          <div class="form-group"><label>שם המנהלת</label><input type="text" id="f-m-name" required value="${esc(m.name)}"></div>
+          <div class="form-group"><label>שם המעון</label><input type="text" id="f-m-kg" required value="${esc(m.kgName)}"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>עיר</label><input type="text" id="f-m-city" required value="${esc(m.city)}"></div>
+          <div class="form-group"><label>תקציב שנתי לילד (₪)</label><input type="number" id="f-m-budget" min="0" required value="${m.budgetPerChild}"></div>
+        </div>
+        <div class="form-group"><label>הערות</label><textarea id="f-m-notes" rows="2">${esc(m.notes)}</textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger" onclick="App.deleteManager('${id}')">מחיקה</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">שמירה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitEditManager(e,id){
+    e.preventDefault();
+    const m = getManager(id);
+    m.name = document.getElementById('f-m-name').value.trim() || m.name;
+    m.kgName = document.getElementById('f-m-kg').value.trim() || m.kgName;
+    m.city = document.getElementById('f-m-city').value.trim() || m.city;
+    m.budgetPerChild = parseInt(document.getElementById('f-m-budget').value)||m.budgetPerChild;
+    m.notes = document.getElementById('f-m-notes').value.trim();
+    saveDB(); closeModal(); render();
+    return false;
+  },
+  deleteManager(id){
+    const m = getManager(id);
+    if(!confirm('למחוק את "' + m.name + '" (' + m.kgName + ') וכל ההזמנות שלה?')) return;
+    const primaryId = m.primaryId;
+    DB.orders = DB.orders.filter(o=>o.managerId!==id);
+    DB.managers = DB.managers.filter(mm=>mm.id!==id);
+    logActivity('מנהלת "' + m.name + '" (' + m.kgName + ') נמחקה');
+    saveDB(); closeModal(); this.goPrimary(primaryId);
+  },
+
+  openEditChildrenModal(id){
+    const m = getManager(id);
+    openModal(`
+      <h3>עדכון מספר ילדים</h3>
+      <p class="modal-sub">שינוי ישפיע על התקציב הכולל ועל חגים עתידיים שטרם ננעלו. הזמנות שכבר אושרו/סופקו ישמרו את הכמות המקורית שלהן.</p>
+      <form onsubmit="return App.submitEditChildren(event,'${id}')">
+        <div class="form-group"><label>מספר ילדים נוכחי</label><input type="number" id="f-children" min="0" required value="${m.children}"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">עדכון</button>
+        </div>
+      </form>
+    `);
+  },
+  submitEditChildren(e,id){
+    e.preventDefault();
+    const m = getManager(id);
+    const newVal = parseInt(document.getElementById('f-children').value);
+    if(isNaN(newVal) || newVal<0) return false;
+    const old = m.children;
+    m.children = newVal;
+    if(old !== newVal){
+      logActivity(m.name + ' / ' + m.kgName + ' – מספר הילדים עודכן מ-' + old + ' ל-' + newVal);
+    }
+    saveDB(); closeModal(); render();
+    return false;
+  },
+
+  /* ---------- modals: orders / holiday rows ---------- */
+  openEditOrderModal(orderId){
+    const o = getOrder(orderId);
+    const m = getManager(o.managerId);
+    const h = getHolidayMap()[o.holidayKey];
+    const label = o.custom ? (o.customName||'אירוע מותאם') : (h.icon + ' ' + h.name);
+    openModal(`
+      <h3>${label}</h3>
+      <p class="modal-sub">${esc(m.name)} · ${esc(m.kgName)}</p>
+      <form onsubmit="return App.submitEditOrder(event,'${orderId}')">
+        ${o.custom ? `<div class="form-group"><label>שם האירוע</label><input type="text" id="f-o-name" value="${esc(o.customName||'')}" required></div>` : ''}
+        <div class="form-group"><label>בחירה מתוכננת (מראש)</label><input type="text" id="f-o-planned" value="${esc(o.plannedProduct||'')}" placeholder="שם המוצר שנבחר מראש"></div>
+        <div class="form-group"><label>בחירה בפועל (מה סופק בסוף)</label><input type="text" id="f-o-actual" value="${esc(o.actualProduct||'')}" placeholder="השאירו ריק אם עדיין לא ידוע"></div>
+        <div class="form-row2">
+          <div class="form-group"><label>מחיר מתוכנן לילד (₪)</label><input type="number" id="f-o-pprice" min="0" value="${o.plannedPrice!=null?o.plannedPrice:''}"></div>
+          <div class="form-group"><label>מחיר בפועל לילד (₪)</label><input type="number" id="f-o-aprice" min="0" value="${o.actualPrice!=null?o.actualPrice:''}"></div>
+        </div>
+        <div class="form-group"><label>סטטוס</label>
+          <select id="f-o-status">
+            ${STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>הערות</label><textarea id="f-o-notes" rows="2">${esc(o.notes||'')}</textarea></div>
+        <div class="modal-actions">
+          ${o.custom ? `<button type="button" class="btn btn-danger" onclick="App.deleteOrder('${orderId}')">מחיקה</button>` : ''}
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">שמירה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitEditOrder(e, orderId){
+    e.preventDefault();
+    const o = getOrder(orderId);
+    const m = getManager(o.managerId);
+    if(o.custom){
+      const nameEl = document.getElementById('f-o-name');
+      if(nameEl) o.customName = nameEl.value.trim() || o.customName;
+    }
+    o.plannedProduct = document.getElementById('f-o-planned').value.trim();
+    o.actualProduct = document.getElementById('f-o-actual').value.trim() || null;
+    const pp = document.getElementById('f-o-pprice').value;
+    const ap = document.getElementById('f-o-aprice').value;
+    o.plannedPrice = pp===''? o.plannedPrice : parseFloat(pp);
+    o.actualPrice = ap===''? null : parseFloat(ap);
+    const newStatus = document.getElementById('f-o-status').value;
+    const wasLocked = o.locked;
+    o.status = newStatus;
+    o.locked = LOCKED_STATUSES.includes(newStatus);
+    if(o.locked && !wasLocked){
+      o.childrenSnapshot = m.children; // lock-in current children count
+    }
+    o.notes = document.getElementById('f-o-notes').value.trim();
+    logActivity(m.name + ' / ' + m.kgName + ' – סטטוס "' + (o.custom? (o.customName||'אירוע') : getHolidayMap()[o.holidayKey].name) + '" עודכן ל"' + newStatus + '"');
+    saveDB(); closeModal(); render();
+    return false;
+  },
+  deleteOrder(orderId){
+    const o = getOrder(orderId);
+    if(!o.custom) return;
+    if(!confirm('למחוק אירוע זה?')) return;
+    const managerId = o.managerId;
+    DB.orders = DB.orders.filter(x=>x.id!==orderId);
+    saveDB(); closeModal(); render();
+  },
+  openAddCustomEventModal(managerId){
+    openModal(`
+      <h3>הוספת אירוע / הזמנה מיוחדת</h3>
+      <p class="modal-sub">לאירועים חד-פעמיים מעבר לתוכנית השנתית הקבועה.</p>
+      <form onsubmit="return App.submitAddCustomEvent(event,'${managerId}')">
+        <div class="form-group"><label>שם האירוע</label><input type="text" id="f-o-name" required placeholder="למשל: יום הולדת למעון"></div>
+        <div class="form-group"><label>מוצר מתוכנן</label><input type="text" id="f-o-planned" placeholder="שם המוצר"></div>
+        <div class="form-group"><label>מחיר לילד (₪)</label><input type="number" id="f-o-pprice" min="0" value="30"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">הוספה</button>
+        </div>
+      </form>
+    `);
+  },
+  submitAddCustomEvent(e, managerId){
+    e.preventDefault();
+    const name = document.getElementById('f-o-name').value.trim();
+    if(!name) return false;
+    const planned = document.getElementById('f-o-planned').value.trim();
+    const price = parseFloat(document.getElementById('f-o-pprice').value)||0;
+    DB.orders.push({
+      id: uid('custom'), managerId, holidayKey:'custom', custom:true, customName:name,
+      plannedProduct:planned, actualProduct:null, plannedPrice:price, actualPrice:null,
+      status:'טרם נבחר', notes:'', childrenSnapshot:null, locked:false
+    });
+    const m = getManager(managerId);
+    logActivity(m.name + ' / ' + m.kgName + ' – נוסף אירוע מותאם: ' + name);
+    saveDB(); closeModal(); render();
+    return false;
+  },
+
+  /* ---------- search / filters ---------- */
+  updateSearch(field, value){
+    this.state.search[field] = value;
+    render();
+  },
+  clearSearch(){
+    this.state.search = {q:'',primary:'',city:'',holiday:'',status:'',budget:''};
+    render();
+  },
+
+  /* ---------- manage yearly events / holidays ---------- */
+  openManageHolidaysModal(){
+    const list = getHolidays().map(h=>{
+      const count = DB.orders.filter(o=>o.holidayKey===h.key).length;
+      return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);">
+        <span style="font-size:19px;width:26px;text-align:center;">${h.icon}</span>
+        <input type="text" value="${esc(h.name)}" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:13.5px;background:var(--bg);" onchange="App.renameHoliday('${h.key}', this.value)">
+        <span style="font-size:11.5px;color:var(--ink-soft);white-space:nowrap;">${count} מנהלות</span>
+        <span class="btn-icon" title="ניהול שיוך למנהלות" onclick="App.openHolidayAssignmentModal('${h.key}')">🔗</span>
+      </div>
+    `;
+    }).join('');
+    openModal(`
+      <h3>אירועי השנה</h3>
+      <p class="modal-sub">שינוי שם כאן מתעדכן אצל כולן (זה רק תווית). הוספה או הסרה של האירוע עצמו נעשית רק אצל המנהלות שתבחרי - לא אוטומטית אצל כולן.</p>
+      <div style="max-height:320px;overflow-y:auto;margin-bottom:16px;">${list || '<p style="color:var(--ink-soft);font-size:13px;">אין עדיין אירועים.</p>'}</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">סגירה</button>
+        <button type="button" class="btn btn-primary" onclick="App.openAddHolidayModal()">+ אירוע חדש</button>
+      </div>
+    `);
+  },
+  openAddHolidayModal(){
+    openModal(`
+      <h3>הוספת אירוע חדש</h3>
+      <p class="modal-sub">בשלב הבא תוכלי לבחור בדיוק לאילו מנהלות לשייך אותו - לא חייבים לכולן.</p>
+      <form onsubmit="return App.submitAddHoliday(event)">
+        <div class="form-row2">
+          <div class="form-group"><label>אימוג׳י (לא חובה)</label><input type="text" id="f-h-icon" maxlength="4" placeholder="🎉"></div>
+          <div class="form-group"><label>שם האירוע</label><input type="text" id="f-h-name" required placeholder="למשל: יום המשפחה"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="App.openManageHolidaysModal()">ביטול</button>
+          <button type="submit" class="btn btn-primary">המשך לבחירת מנהלות</button>
+        </div>
+      </form>
+    `);
+  },
+  submitAddHoliday(e){
+    e.preventDefault();
+    const name = document.getElementById('f-h-name').value.trim();
+    const icon = document.getElementById('f-h-icon').value.trim() || '🎉';
+    if(!name) return false;
+    const key = uid('hol');
+    if(!Array.isArray(DB.holidays)) DB.holidays = [];
+    DB.holidays.push({key, name, icon});
+    logActivity('נוסף אירוע חדש לקטלוג: ' + name + ' (עדיין לא משויך לאף מנהלת)');
+    saveDB();
+    this.openHolidayAssignmentModal(key);
+    return false;
+  },
+  renameHoliday(key, newName){
+    const h = getHolidays().find(x=>x.key===key);
+    newName = (newName||'').trim();
+    if(!h || !newName || newName===h.name) return;
+    const old = h.name;
+    h.name = newName;
+    logActivity('שם האירוע "' + old + '" שונה ל"' + newName + '"');
+    saveDB(); render();
+  },
+  openHolidayAssignmentModal(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const assignedIds = new Set(DB.orders.filter(o=>o.holidayKey===key).map(o=>o.managerId));
+    const rows = DB.managers.map(m=>{
+      const p = getPrimary(m.primaryId);
+      const checked = assignedIds.has(m.id);
+      return `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer;">
+        <input type="checkbox" data-manager-id="${m.id}" ${checked?'checked':''} style="width:16px;height:16px;flex-shrink:0;">
+        <span style="flex:1;">${esc(m.name)} · ${esc(m.kgName)}</span>
+        <span style="color:var(--ink-soft);font-size:12px;">${esc(p?p.name:'')}</span>
+      </label>`;
+    }).join('');
+    openModal(`
+      <h3>${h.icon} שיוך "${esc(h.name)}" למנהלות</h3>
+      <p class="modal-sub">סמני רק את המנהלות שצריכות את האירוע הזה בתוכנית שלהן. הסרת סימון תמחק את הרשומה של אותה מנהלת לאירוע זה בלבד.</p>
+      <div style="max-height:300px;overflow-y:auto;margin-bottom:16px;" id="assignList">
+        ${rows || '<p style="color:var(--ink-soft);font-size:13px;">אין עדיין מנהלות במערכת.</p>'}
+      </div>
+      <div class="modal-actions" style="justify-content:space-between;">
+        <span class="btn btn-danger btn-sm" onclick="App.deleteHoliday('${key}')">🗑 מחיקת האירוע לגמרי מהקטלוג</span>
+        <div style="display:flex;gap:10px;">
+          <button type="button" class="btn btn-ghost" onclick="App.openManageHolidaysModal()">חזרה</button>
+          <button type="button" class="btn btn-primary" onclick="App.submitHolidayAssignment('${key}')">שמירה</button>
+        </div>
+      </div>
+    `);
+  },
+  submitHolidayAssignment(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const checkboxes = document.querySelectorAll('#assignList input[type=checkbox]');
+    const checkedIds = new Set();
+    checkboxes.forEach(cb=>{ if(cb.checked) checkedIds.add(cb.getAttribute('data-manager-id')); });
+    const currentIds = new Set(DB.orders.filter(o=>o.holidayKey===key).map(o=>o.managerId));
+
+    DB.orders = DB.orders.filter(o=>{
+      if(o.holidayKey!==key) return true;
+      return checkedIds.has(o.managerId);
+    });
+    checkedIds.forEach(mid=>{
+      if(!currentIds.has(mid)){
+        DB.orders.push({
+          id: mid+'_'+key, managerId:mid, holidayKey:key, custom:false,
+          plannedProduct:'', actualProduct:null, plannedPrice:30, actualPrice:null,
+          status:'טרם נבחר', notes:'', childrenSnapshot:null, locked:false
+        });
+      }
+    });
+    logActivity('שיוך האירוע "' + h.name + '" עודכן - כעת אצל ' + checkedIds.size + ' מנהלות');
+    saveDB();
+    closeModal();
+    render();
+  },
+  deleteHoliday(key){
+    const h = getHolidays().find(x=>x.key===key);
+    if(!h) return;
+    const count = DB.orders.filter(o=>o.holidayKey===key).length;
+    if(!confirm('למחוק את "' + h.name + '" לגמרי מהקטלוג? פעולה זו תמחק גם ' + count + ' רשומות הזמנה משויכות (אצל המנהלות שכן כוללות אותו), ואינה הפיכה. להמשיך?')) return;
+    DB.holidays = DB.holidays.filter(x=>x.key!==key);
+    DB.orders = DB.orders.filter(o=>o.holidayKey!==key);
+    logActivity('האירוע "' + h.name + '" נמחק לגמרי מהקטלוג');
+    saveDB(); this.openManageHolidaysModal();
+  },
+
+  /* ---------- backup / restore / reset ---------- */
+  openDataToolsModal(){
+    openModal(`
+      <h3>גיבוי ונתונים</h3>
+      <p class="modal-sub">ניהול הנתונים השמורים במערכת.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:6px;">
+        <button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;" onclick="App.exportBackup()">📥 הורדת גיבוי (קובץ לשמירה במחשב)</button>
+        <button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;" onclick="App.triggerRestore()">📤 שחזור מקובץ גיבוי</button>
+        <button type="button" class="btn btn-danger" style="width:100%;justify-content:flex-start;" onclick="App.resetAllData()">🗑 מחיקת כל הנתונים (התחלה מריק)</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">סגירה</button>
+      </div>
+    `);
+  },
+  exportBackup(){
+    const dataStr = JSON.stringify(DB, null, 2);
+    const blob = new Blob([dataStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'גיבוי-תוכנית-מתנות-' + today + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  triggerRestore(){
+    document.getElementById('restoreFileInput').click();
+  },
+  handleRestoreFile(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      let parsed;
+      try{ parsed = JSON.parse(ev.target.result); }
+      catch(err){ alert('לא הצלחתי לקרוא את הקובץ. ודאי שזה קובץ גיבוי תקין שהורד מהמערכת הזו.'); return; }
+      if(!parsed || !Array.isArray(parsed.primaries) || !Array.isArray(parsed.managers) || !Array.isArray(parsed.orders)){
+        alert('הקובץ לא נראה כמו קובץ גיבוי של המערכת.');
+        return;
+      }
+      if(!confirm('פעולה זו תחליף את כל הנתונים הקיימים במערכת בנתונים מתוך הקובץ שבחרת. להמשיך?')) return;
+      DB = parsed;
+      if(!Array.isArray(DB.activity)) DB.activity = [];
+      if(!Array.isArray(DB.holidays)) DB.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
+      logActivity('הנתונים שוחזרו מקובץ גיבוי');
+      saveDB();
+      closeModal();
+      App.goDashboard();
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  },
+  resetAllData(){
+    if(!confirm('פעולה זו תמחק את כל הנתונים הקיימים במערכת (כולל נתוני הדוגמה) ותתחיל מריק. מומלץ להוריד גיבוי קודם. להמשיך?')) return;
+    if(!confirm('לאישור סופי: הפעולה אינה הפיכה, אלא אם תשחזרי מגיבוי. למחוק הכול?')) return;
+    DB = {
+      primaries: [], managers: [], orders: [],
+      holidays: JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS)),
+      activity: [{id:uid('a'), text:'המערכת אופסה וכל הנתונים נמחקו', time:new Date().toISOString()}]
+    };
+    saveDB();
+    closeModal();
+    App.goDashboard();
+  }
+};
+
+function openModal(html){
+  document.getElementById('modalRoot').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this) closeModal()"><div class="modal">${html}</div></div>`;
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+/* =========================================================================
+   RENDER: BREADCRUMB
+   ========================================================================= */
+function renderBreadcrumb(){
+  const el = document.getElementById('breadcrumb');
+  const s = App.state;
+  let parts = [`<a onclick="App.goDashboard()">🏠 בית</a>`];
+  if(s.view==='primary' || s.view==='manager'){
+    const p = getPrimary(s.primaryId);
+    if(p){
+      if(s.view==='manager'){
+        parts.push(`<a onclick="App.goPrimary('${p.id}')">${esc(p.name)}</a>`);
+      } else {
+        parts.push(`<span class="current">${esc(p.name)}</span>`);
+      }
+    }
+  }
+  if(s.view==='manager'){
+    const m = getManager(s.managerId);
+    if(m) parts.push(`<span class="current">${esc(m.name)} · ${esc(m.kgName)}</span>`);
+  }
+  if(s.view==='holiday'){
+    parts.push(`<span class="current">החג הקרוב</span>`);
+  }
+  if(s.view==='search'){
+    parts.push(`<span class="current">חיפוש מתקדם</span>`);
+  }
+  el.innerHTML = parts.length>1 ? `<div class="breadcrumb">${parts.join('<span class="sep">›</span>')}</div>` : '';
+}
+
+/* =========================================================================
+   RENDER: DASHBOARD
+   ========================================================================= */
+function renderDashboard(){
+  const agg = overallAggregate();
+  const bs = budgetStatusMeta(agg.percent);
+
+  let html = `
+    <div class="page-head">
+      <div><h2>מבט על</h2><div class="sub">כל הרשתות, המעונות והתקציבים במקום אחד</div></div>
+      <button class="btn btn-accent" onclick="App.goHoliday('rosh')">🍯 מסך החג הקרוב</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">👑 מנהלות ראשיות</div><div class="value">${agg.primaryCount}</div></div>
+      <div class="stat-card"><div class="label">🧑‍🏫 מנהלות מעונות</div><div class="value">${agg.managerCount}</div></div>
+      <div class="stat-card"><div class="label">🏠 מעונות</div><div class="value">${agg.kgCount}</div></div>
+      <div class="stat-card"><div class="label">🧒 ילדים בתוכנית</div><div class="value">${agg.children.toLocaleString('he-IL')}</div></div>
+      <div class="stat-card accent"><div class="label">💰 תקציב שנתי כולל</div><div class="value">${money(agg.budget)}</div></div>
+      <div class="stat-card accent"><div class="label">✅ נוצל עד כה</div><div class="value">${money(agg.spent)}</div></div>
+      <div class="stat-card accent"><div class="label">${bs.icon} יתרת תקציב</div><div class="value">${money(agg.remaining)}</div></div>
+      <div class="stat-card"><div class="label">📋 הזמנות פעילות</div><div class="value">${agg.activeOrders}</div></div>
+    </div>
+
+    <div class="section-title"><h3>מנהלות ראשיות</h3><button class="btn btn-ghost btn-sm" onclick="App.openAddPrimaryModal()">+ הוספת מנהלת ראשית</button></div>
+  `;
+
+  if(DB.primaries.length===0){
+    html += `<div class="empty-state card"><div class="em-icon">👑</div><p>עדיין אין מנהלות ראשיות. התחילו בהוספת הראשונה.</p></div>`;
+  } else {
+    html += `<div class="primary-grid">`;
+    DB.primaries.forEach(p=>{
+      const pa = primaryAggregate(p.id);
+      const pbs = budgetStatusMeta(pa.percent);
+      html += `
+        <div class="primary-card" onclick="App.goPrimary('${p.id}')">
+          <div class="pc-head">
+            <h3>${esc(p.name)}</h3>
+            <span class="pc-tag" onclick="event.stopPropagation();App.openEditPrimaryModal('${p.id}')">✎ עריכה</span>
+          </div>
+          <div class="pc-stats">
+            <div><span class="n">${pa.managerCount}</span><span class="l">מנהלות</span></div>
+            <div><span class="n">${pa.children}</span><span class="l">ילדים</span></div>
+          </div>
+          <div class="pc-money">תקציב: <b>${money(pa.budget)}</b> · נוצל: <b>${money(pa.spent)}</b> · נותר: <b>${money(pa.remaining)}</b></div>
+          <div class="progress-track"><div class="progress-fill" style="width:${Math.min(pa.percent,100)}%;background:${progressColor(pa.percent)}"></div></div>
+          <div class="progress-row"><span>${pct(pa.percent)} נוצל</span><span class="badge ${pbs.cls}">${pbs.icon} ${pbs.label}</span></div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  html += `
+    <div class="section-title"><h3>🕓 פעילות אחרונה</h3></div>
+    <div class="activity-list">
+      ${DB.activity.slice(0,8).map(a=>`
+        <div class="activity-item">
+          <div class="activity-dot"></div>
+          <div style="flex:1">${esc(a.text)}</div>
+          <div class="activity-time">${timeAgo(a.time)}</div>
+        </div>
+      `).join('') || '<div class="empty-state"><p>אין פעילות עדיין</p></div>'}
+    </div>
+  `;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER: PRIMARY MANAGER PAGE
+   ========================================================================= */
+function renderPrimary(primaryId){
+  const p = getPrimary(primaryId);
+  if(!p){ App.goDashboard(); return; }
+  const pa = primaryAggregate(primaryId);
+  const pbs = budgetStatusMeta(pa.percent);
+  const mgrs = getManagersOf(primaryId);
+
+  let html = `
+    <div class="page-head">
+      <div>
+        <h2>${esc(p.name)}</h2>
+        <div class="sub">${p.notes ? esc(p.notes) : 'מנהלת ראשית'}</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost btn-sm" onclick="App.openEditPrimaryModal('${p.id}')">✎ עריכת פרטים</button>
+        <button class="btn btn-primary btn-sm" onclick="App.openAddManagerModal('${p.id}')">+ הוספת מנהלת</button>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">🧑‍🏫 מנהלות תחתיה</div><div class="value">${pa.managerCount}</div></div>
+      <div class="stat-card"><div class="label">🧒 ילדים כולל</div><div class="value">${pa.children}</div></div>
+      <div class="stat-card"><div class="label">💰 תקציב כולל</div><div class="value">${money(pa.budget)}</div></div>
+      <div class="stat-card"><div class="label">✅ נוצל</div><div class="value">${money(pa.spent)}</div></div>
+      <div class="stat-card"><div class="label">💵 יתרה</div><div class="value">${money(pa.remaining)}</div></div>
+      <div class="stat-card"><div class="label">${pbs.icon} ניצול תקציב</div><div class="value">${pct(pa.percent)}</div></div>
+    </div>
+
+    <div class="section-title"><h3>מנהלות מעונות (${mgrs.length})</h3></div>
+  `;
+
+  if(mgrs.length===0){
+    html += `<div class="empty-state card"><div class="em-icon">🧑‍🏫</div><p>אין עדיין מנהלות תחת ${esc(p.name)}.</p></div>`;
+  } else {
+    html += `<div class="manager-list">`;
+    mgrs.forEach(m=>{
+      const budget = managerBudgetTotal(m);
+      const spent = managerSpent(m);
+      const remaining = budget-spent;
+      const percent = managerPercent(m);
+      const mbs = budgetStatusMeta(percent);
+      const roshOrder = DB.orders.find(o=>o.managerId===m.id && o.holidayKey==='rosh');
+      const roshMeta = roshOrder ? STATUS_META[roshOrder.status] : null;
+      html += `
+        <div class="manager-row" onclick="App.goManager('${m.id}')">
+          <div>
+            <div class="mr-name">${esc(m.name)}</div>
+            <div class="mr-sub">🏠 ${esc(m.kgName)} · 📍 ${esc(m.city)}</div>
+          </div>
+          <div><div class="mr-col-label">ילדים</div><div class="mr-col-value">${m.children}</div></div>
+          <div><div class="mr-col-label">תקציב / ניצול</div><div class="mr-col-value">${money(budget)}</div></div>
+          <div>
+            <div class="mr-col-label">ניצול תקציב</div>
+            <div class="progress-track" style="margin-top:4px;"><div class="progress-fill" style="width:${Math.min(percent,100)}%;background:${progressColor(percent)}"></div></div>
+            <div class="progress-row"><span>${pct(percent)}</span><span>${money(remaining)} נותר</span></div>
+          </div>
+          <div>
+            <div class="mr-col-label">ראש השנה</div>
+            ${roshMeta ? `<span class="badge ${roshMeta.cls}">${roshMeta.icon} ${roshOrder.status}</span>` : '<span class="badge badge-neutral">—</span>'}
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  document.getElementById('app').innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER: MANAGER / KINDERGARTEN DETAIL
+   ========================================================================= */
+function renderManager(managerId){
+  const m = getManager(managerId);
+  if(!m){ App.goDashboard(); return; }
+  const budget = managerBudgetTotal(m);
+  const spent = managerSpent(m);
+  const remaining = budget - spent;
+  const percent = managerPercent(m);
+  const bs = budgetStatusMeta(percent);
+  const orders = getOrdersOf(managerId);
+  const standardOrders = getHolidays().map(h=> orders.find(o=>o.holidayKey===h.key) ).filter(Boolean);
+  const customOrders = orders.filter(o=>o.custom);
+
+  let html = `
+    <div class="kg-head">
+      <div class="kg-head-top">
+        <div>
+          <h2>${esc(m.name)}</h2>
+          <div class="kg-meta">
+            <span>🏠 ${esc(m.kgName)}</span>
+            <span>📍 ${esc(m.city)}</span>
+            <span>${esc(getPrimary(m.primaryId)?.name || '')}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="App.openEditManagerModal('${m.id}')">✎ עריכת פרטים</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.openAddCustomEventModal('${m.id}')">+ הוספת הזמנה</button>
+        </div>
+      </div>
+      <div class="kg-stats">
+        <div class="kg-stat"><div class="l">🧒 ילדים נוכחי</div><div class="v">${m.children} <span onclick="App.openEditChildrenModal('${m.id}')" style="font-size:13px;cursor:pointer;color:var(--pink-text);">✎</span></div></div>
+        <div class="kg-stat"><div class="l">💰 תקציב לילד</div><div class="v">${money(m.budgetPerChild)}</div></div>
+        <div class="kg-stat"><div class="l">📊 תקציב כולל</div><div class="v">${money(budget)}</div></div>
+        <div class="kg-stat"><div class="l">💵 נותר</div><div class="v">${money(remaining)}</div></div>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="progress-track"><div class="progress-fill" style="width:${Math.min(percent,100)}%;background:${progressColor(percent)}"></div></div>
+        <div class="progress-row"><span>${pct(percent)} נוצל (${money(spent)})</span><span class="badge ${bs.cls}">${bs.icon} ${bs.label}</span></div>
+      </div>
+      ${m.notes ? `<div style="margin-top:14px;font-size:13px;color:var(--ink-soft);">📝 ${esc(m.notes)}</div>` : ''}
+    </div>
+
+    <div class="section-title"><h3>📅 תוכנית שנתית</h3></div>
+    <table class="holiday-table">
+      <thead><tr>
+        <th>אירוע</th><th>בחירה מתוכננת</th><th>בחירה בפועל</th><th>ילדים</th><th>סה״כ</th><th>סטטוס</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${standardOrders.map(o=> renderOrderRow(o, m) ).join('')}
+      </tbody>
+    </table>
+  `;
+
+  if(customOrders.length>0){
+    html += `
+      <div class="section-title"><h3>✨ אירועים מיוחדים</h3></div>
+      <table class="holiday-table">
+        <thead><tr>
+          <th>אירוע</th><th>בחירה מתוכננת</th><th>בחירה בפועל</th><th>ילדים</th><th>סה״כ</th><th>סטטוס</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${customOrders.map(o=> renderOrderRow(o, m) ).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderOrderRow(o, m){
+  const h = o.custom ? null : getHolidayMap()[o.holidayKey];
+  const label = o.custom ? (o.customName||'אירוע') : (h.icon + ' ' + h.name);
+  const children = orderChildren(o, m);
+  const totalPlanned = orderTotalPlanned(o, m);
+  const totalActual = orderTotalActual(o, m);
+  const meta = STATUS_META[o.status];
+  const total = totalActual!=null ? totalActual : totalPlanned;
+  const totalLabel = totalActual!=null ? money(totalActual) : (money(totalPlanned) + ' (צפוי)');
+  return `
+    <tr onclick="App.openEditOrderModal('${o.id}')" style="cursor:pointer;">
+      <td class="ht-holiday">${label}</td>
+      <td class="ht-product">${esc(o.plannedProduct)||'—'}</td>
+      <td class="ht-product"><b>${o.actualProduct ? esc(o.actualProduct) : '—'}</b>${o.locked?'<div class="ht-planned-note">🔒 כמות נעולה: '+children+' ילדים</div>':''}</td>
+      <td>${children}</td>
+      <td>${totalLabel}</td>
+      <td><span class="badge ${meta.cls}">${meta.icon} ${o.status}</span></td>
+      <td><span class="btn-icon" onclick="event.stopPropagation();App.openEditOrderModal('${o.id}')" title="עריכה">✎</span></td>
+    </tr>
+  `;
+}
+
+/* =========================================================================
+   RENDER: UPCOMING HOLIDAY SCREEN
+   ========================================================================= */
+function renderHoliday(holidayKey){
+  const h = getHolidayMap()[holidayKey] || getHolidays()[0];
+  const rows = DB.orders.filter(o=>o.holidayKey===h.key).map(o=>({o, m:getManager(o.managerId)})).filter(x=>x.m);
+
+  // production summary: group by actual||planned product
+  const productMap = {};
+  rows.forEach(({o,m})=>{
+    const name = o.actualProduct || o.plannedProduct || 'לא ידוע';
+    const qty = orderChildren(o,m);
+    productMap[name] = (productMap[name]||0) + qty;
+  });
+  const productEntries = Object.entries(productMap).sort((a,b)=>b[1]-a[1]);
+  const totalUnits = productEntries.reduce((s,[,q])=>s+q,0);
+
+  let html = `
+    <div class="page-head">
+      <div><h2>${h.icon} החג הקרוב: ${h.name}</h2><div class="sub">כל ההזמנות מכל הרשתות והמעונות עבור אירוע זה</div></div>
+    </div>
+
+    <div class="tabs">
+      ${getHolidays().map(x=>`<div class="tab ${x.key===h.key?'active':''}" onclick="App.goHoliday('${x.key}')">${x.icon} ${x.name}</div>`).join('')}
+    </div>
+
+    <div class="section-title"><h3>🏭 סיכום ייצור נדרש</h3></div>
+    <div class="prod-grid">
+      ${productEntries.length ? productEntries.map(([name,qty])=>`
+        <div class="prod-card">
+          <div class="p-name">${esc(name)}</div>
+          <div class="p-count">${qty}</div>
+          <div class="p-unit">יחידות</div>
+        </div>
+      `).join('') : '<div class="empty-state"><p>עדיין אין בחירות לחג זה</p></div>'}
+    </div>
+    <div style="margin:-10px 0 26px;color:var(--ink-soft);font-size:13.5px;">סה״כ ${totalUnits} יחידות בתכנון עבור ${rows.length} מעונות</div>
+
+    <div class="section-title"><h3>📋 פירוט לפי מעון</h3></div>
+    <table class="holiday-table">
+      <thead><tr>
+        <th>מנהלת ראשית</th><th>מנהלת</th><th>מעון</th><th>ילדים</th><th>מוצר</th><th>סה״כ</th><th>סטטוס</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(({o,m})=>{
+          const p = getPrimary(m.primaryId);
+          const meta = STATUS_META[o.status];
+          const children = orderChildren(o,m);
+          const totalActual = orderTotalActual(o,m);
+          const totalPlanned = orderTotalPlanned(o,m);
+          const totalLabel = totalActual!=null ? money(totalActual) : money(totalPlanned)+' (צפוי)';
+          return `
+            <tr onclick="App.goManager('${m.id}')" style="cursor:pointer;">
+              <td>${esc(p ? p.name : '—')}</td>
+              <td>${esc(m.name)}</td>
+              <td>${esc(m.kgName)} · ${esc(m.city)}</td>
+              <td>${children}</td>
+              <td>${esc(o.actualProduct || o.plannedProduct || '—')}</td>
+              <td>${totalLabel}</td>
+              <td><span class="badge ${meta.cls}">${meta.icon} ${o.status}</span></td>
+            </tr>
+          `;
+        }).join('') || ''}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('app').innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER: ADVANCED SEARCH
+   ========================================================================= */
+function renderSearch(){
+  const s = App.state.search;
+  const allRows = DB.orders.map(o=>({o, m:getManager(o.managerId)})).filter(x=>x.m);
+
+  const filtered = allRows.filter(({o,m})=>{
+    const p = getPrimary(m.primaryId);
+    if(s.q){
+      const hay = [m.name, m.kgName, m.city, p?p.name:'', o.plannedProduct, o.actualProduct].join(' ').toLowerCase();
+      if(!hay.includes(s.q.toLowerCase())) return false;
+    }
+    if(s.primary && m.primaryId !== s.primary) return false;
+    if(s.city && m.city !== s.city) return false;
+    if(s.holiday && o.holidayKey !== s.holiday) return false;
+    if(s.status && o.status !== s.status) return false;
+    if(s.budget){
+      const percent = managerPercent(m);
+      const bs = budgetStatusMeta(percent);
+      const key = percent>100?'over':percent>90?'danger':percent>70?'warn':'ok';
+      if(key !== s.budget) return false;
+    }
+    return true;
+  });
+
+  const cities = [...new Set(DB.managers.map(m=>m.city))].sort();
+
+  let html = `
+    <div class="page-head"><div><h2>חיפוש מתקדם</h2><div class="sub">${filtered.length} תוצאות</div></div></div>
+
+    <div class="filter-grid" style="margin-bottom:12px;">
+      <input type="text" placeholder="חיפוש חופשי (שם, מעון, עיר, מוצר...)" value="${esc(s.q)}" oninput="App.updateSearch('q', this.value)">
+      <select onchange="App.updateSearch('primary', this.value)">
+        <option value="">כל המנהלות הראשיות</option>
+        ${DB.primaries.map(p=>`<option value="${p.id}" ${s.primary===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+      </select>
+      <select onchange="App.updateSearch('city', this.value)">
+        <option value="">כל הערים</option>
+        ${cities.map(c=>`<option value="${esc(c)}" ${s.city===c?'selected':''}>${esc(c)}</option>`).join('')}
+      </select>
+      <select onchange="App.updateSearch('holiday', this.value)">
+        <option value="">כל החגים</option>
+        ${getHolidays().map(h=>`<option value="${h.key}" ${s.holiday===h.key?'selected':''}>${h.icon} ${h.name}</option>`).join('')}
+      </select>
+      <select onchange="App.updateSearch('status', this.value)">
+        <option value="">כל הסטטוסים</option>
+        ${STATUSES.map(st=>`<option value="${st}" ${s.status===st?'selected':''}>${st}</option>`).join('')}
+      </select>
+      <select onchange="App.updateSearch('budget', this.value)">
+        <option value="">כל מצבי התקציב</option>
+        <option value="ok" ${s.budget==='ok'?'selected':''}>✓ מצב תקין</option>
+        <option value="warn" ${s.budget==='warn'?'selected':''}>⚠️ תשומת לב</option>
+        <option value="danger" ${s.budget==='danger'?'selected':''}>⛔ כמעט נגמר</option>
+        <option value="over" ${s.budget==='over'?'selected':''}>🔴 חריגה</option>
+      </select>
+      <button class="btn btn-ghost" onclick="App.clearSearch()">🧹 נקה פילטרים</button>
+    </div>
+
+    <table class="holiday-table">
+      <thead><tr>
+        <th>מנהלת ראשית</th><th>מנהלת</th><th>מעון</th><th>חג</th><th>מוצר</th><th>סטטוס</th><th>סה״כ</th>
+      </tr></thead>
+      <tbody>
+        ${filtered.map(({o,m})=>{
+          const p = getPrimary(m.primaryId);
+          const h = o.custom ? {icon:'✨', name:o.customName||'אירוע'} : getHolidayMap()[o.holidayKey];
+          const meta = STATUS_META[o.status];
+          const totalActual = orderTotalActual(o,m);
+          const totalPlanned = orderTotalPlanned(o,m);
+          const totalLabel = totalActual!=null ? money(totalActual) : money(totalPlanned)+' (צפוי)';
+          return `
+            <tr onclick="App.goManager('${m.id}')" style="cursor:pointer;">
+              <td>${esc(p?p.name:'—')}</td>
+              <td>${esc(m.name)}</td>
+              <td>${esc(m.kgName)}</td>
+              <td>${h.icon} ${esc(h.name)}</td>
+              <td>${esc(o.actualProduct || o.plannedProduct || '—')}</td>
+              <td><span class="badge ${meta.cls}">${meta.icon} ${o.status}</span></td>
+              <td>${totalLabel}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+    ${filtered.length===0 ? '<div class="empty-state"><div class="em-icon">🔍</div><p>לא נמצאו תוצאות התואמות את הסינון</p></div>' : ''}
+  `;
+  document.getElementById('app').innerHTML = html;
+}
+
+/* =========================================================================
+   MAIN RENDER DISPATCH
+   ========================================================================= */
+function render(){
+  renderBreadcrumb();
+  const v = App.state.view;
+  if(v==='dashboard') renderDashboard();
+  else if(v==='primary') renderPrimary(App.state.primaryId);
+  else if(v==='manager') renderManager(App.state.managerId);
+  else if(v==='holiday') renderHoliday(App.state.holidayKey);
+  else if(v==='search') renderSearch();
+  else renderDashboard();
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+init();
+async function init(){
+  await loadDB();
+  render();
+}
+</script>
+</body>
+</html>
